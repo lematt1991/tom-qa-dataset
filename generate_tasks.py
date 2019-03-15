@@ -119,7 +119,6 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
             # Generate all combinations of tasks and questions
             task_questions = list(itertools.product(tasks, questions)) * n
             random.shuffle(task_questions)
-            import pdb; pdb.set_trace()
 
             # Create story for each task-question combo
             stories = []
