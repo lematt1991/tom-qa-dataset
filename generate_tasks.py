@@ -190,12 +190,6 @@ def parse_args(args):
     )
 
     parser.add_argument(
-        '-test', '--test_cond', dest='test_cond_choices',
-        choices=['first order', 'second order', 'reality', 'memory'],
-        action='append', required=True, help='Types of test question'
-    )
-
-    parser.add_argument(
         '-ptn', '--prob_test_noise', dest='test_noise', type=float,
         required=True, help='Probability of encountering random noise sentence'
     )
