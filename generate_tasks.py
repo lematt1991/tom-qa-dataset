@@ -36,7 +36,7 @@ def generate_tasks_with_oracle_fixed_count(
         train_file_path = os.path.join(
             output_dir_path, folder_name, 'qa21_task_AB_train.txt'
         )
-        
+
         # Define task creator and task types
         task = Specify_Tasks()
         tasks = ['tb', 'fb', 'sofb']
@@ -44,7 +44,7 @@ def generate_tasks_with_oracle_fixed_count(
 
         with open(train_file_path, 'w') as f:
             stories = []
-            
+
             # Generate all combinations of tasks and questions
             task_questions = list(itertools.product(tasks, questions)) * n
             random.shuffle(task_questions)
@@ -85,7 +85,7 @@ def generate_tasks_with_oracle_fixed_count(
                     )
                     f.write('\n'.join(stringify(story)))
                     f.write('\n')
- 
+
 def generate_tasks_with_oracle_fixed_count_1_task_1_story(
     world_paths, output_dir_path, n, noise=.1, train_noise=False
 ):
@@ -113,9 +113,9 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
         task = Specify_Tasks()
         tasks = ['tb', 'fb', 'sofb']
         questions = ['memory', 'reality', 'search', 'belief']
-        
+
         with open(train_file_path, 'w') as f:
-            
+
             # Generate all combinations of tasks and questions
             task_questions = list(itertools.product(tasks, questions)) * n
             random.shuffle(task_questions)
@@ -155,7 +155,7 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
                     )
                     f.write('\n'.join(stringify(story)))
                     f.write('\n')
-   
+
 def parse_args(args):
 
     parser = argparse.ArgumentParser(
@@ -170,11 +170,6 @@ def parse_args(args):
     parser.add_argument(
         '-o', '--output_dir_path', dest='output_dir_path', type=mkdir_p,
         default='data', help='Output directory path'
-    )
-
-    parser.add_argument(
-        '-b', '--babi_dir_path', dest='babi_dir_path', type=str, required=True,
-        help='Path to directory containing the 20 bAbi task train + test data'
     )
 
     parser.add_argument(
