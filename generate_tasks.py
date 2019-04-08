@@ -30,11 +30,9 @@ def generate_tasks_with_oracle_fixed_count(
         # ----------------------------- TRAINING ----------------------------- #
 
         # Create folder to contain data
-        folder_name = '%s_nex_%d_%d' % (world_name, n, noise*100)
-        logging.info("Creating New task in %s..." % folder_name)
-        mkdir_p(os.path.join(output_dir_path, folder_name))
+        mkdir_p(output_dir_path)
         train_file_path = os.path.join(
-            output_dir_path, folder_name, 'qa21_task_AB_train.txt'
+            output_dir_path, 'qa21_task_AB_train.txt'
         )
 
         # Define task creator and task types
@@ -73,7 +71,7 @@ def generate_tasks_with_oracle_fixed_count(
         for task_type, question, data_set in conds:
 
             fname = '%s_%s_%s_test.txt' % (task_type, question, data_set)
-            full_file_path = os.path.join(output_dir_path, folder_name, fname)
+            full_file_path = os.path.join(output_dir_path, fname)
             with open(full_file_path, 'w') as f:
 
                 # Create story with questions at end
@@ -102,11 +100,9 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
         # ----------------------------- TRAINING ----------------------------- #
 
         # Create folder to contain data
-        folder_name = '%s_nex_%d_%d' % (world_name, n, noise*100)
-        logging.info("Creating New task in %s..." % folder_name)
-        mkdir_p(os.path.join(output_dir_path, folder_name))
+        mkdir_p(output_dir_path)
         train_file_path = os.path.join(
-            output_dir_path, folder_name, 'qa21_task_AB_train.txt'
+            output_dir_path, 'qa21_task_AB_train.txt'
         )
 
         # Define task creator and task types
@@ -143,7 +139,7 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
         for task_type, question, data_set in combo:
 
             fname = '%s_%s_%s_test.txt' % (task_type, question, data_set)
-            path = os.path.join(output_dir_path, folder_name, fname)
+            path = os.path.join(output_dir_path, fname)
 
             with open(path, 'w') as f:
                 stories = []
@@ -213,7 +209,7 @@ def main(args=sys.argv[1:]):
     if args.easy:
         generate_tasks_with_oracle_fixed_count_1_task_1_story(
             world_paths=args.world_paths,
-            output_dir_path=os.path.join(args.output_dir_path, 'tom_easy'),
+            output_dir_path=args.output_dir_path,
             n=args.num_stories_choices,
             noise=args.test_noise,
             train_noise=args.train_noise
@@ -221,7 +217,7 @@ def main(args=sys.argv[1:]):
     else:
         generate_tasks_with_oracle_fixed_count(
             world_paths=args.world_paths,
-            output_dir_path=os.path.join(args.output_dir_path, 'tom'),
+            output_dir_path=args.output_dir_path,
             n=args.num_stories_choices,
             noise=args.test_noise,
             train_noise=args.train_noise
