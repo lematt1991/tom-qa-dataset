@@ -9,8 +9,11 @@ import itertools
 
 from stringify import stringify
 from tasks import Specify_Tasks
+from tasks_v2 import Specify_Tasks as Specify_Tasks_v2
 from utils import is_file, mkdir_p, remove_extension
 from world import World
+from tqdm import tqdm
+
 
 def generate_tasks_with_oracle_fixed_count(
     world_paths, output_dir_path, n, noise=.1, train_noise=False
@@ -151,6 +154,66 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
                     f.write('\n'.join(stringify(story)))
                     f.write('\n')
 
+
+def generate_tasks_v2(
+    world_paths, output_dir_path, n, noise=.1, train_noise=False
+):
+    """Generates stories with guarantee that each task is seen n times."""
+    mkdir_p(output_dir_path)
+    n = n[0]
+
+    for world in world_paths:
+
+        w = World()
+        w.load(world)
+        world_name = remove_extension(world)
+
+        # ----------------------------- TRAINING ----------------------------- #
+
+        # Create folder to contain data
+        mkdir_p(output_dir_path)
+        train_file_path = os.path.join(
+            output_dir_path, 'qa21_task_AB_train.txt'
+        )
+
+        # Define task creator and task types
+        task = Specify_Tasks_v2()
+        tasks = ['fb']
+        questions = ['memory', 'reality', 'search', 'belief']
+
+        with open(train_file_path, 'w') as f:
+
+            # Generate all combinations of tasks and questions
+            task_questions = list(itertools.product(tasks, questions)) * n
+            random.shuffle(task_questions)
+
+            # Create story for each task-question combo
+            stories = []
+            for ts, qs in tqdm(task_questions):
+                story = task.generate_story(
+                    w, 1, tasks=[ts], questions=[qs], num_agents=4,
+                    num_locations=6, statement_noise=noise if train_noise else 0
+                )
+                f.write('\n'.join(stringify(story)))
+                f.write('\n')
+
+        # ---------------------------- VAL + TEST ---------------------------- #
+        # Iterate through all testing conditions
+        combo = itertools.product(tasks, questions, ['val', 'test'])
+        for task_type, question, data_set in combo:
+            fname = '%s_%s_%s_test.txt' % (task_type, question, data_set)
+            path = os.path.join(output_dir_path, fname)
+
+            with open(path, 'w') as f:
+                stories = []
+                for i in tqdm(range(n)):
+                    story = task.generate_story(
+                        w, 1, [task_type], [question], num_agents=4,
+                        num_locations=6, statement_noise=noise
+                    )
+                    f.write('\n'.join(stringify(story)))
+                    f.write('\n')
+
 def parse_args(args):
 
     parser = argparse.ArgumentParser(
@@ -194,6 +257,8 @@ def parse_args(args):
         help='Whether or not to include noise at training time'
     )
 
+    parser.add_argument('-v', '--version', choices=['v1', 'v2'], default='v1')
+
     parsed = parser.parse_args(args)
 
     return parsed
@@ -206,7 +271,15 @@ def main(args=sys.argv[1:]):
         level=args.logging, format='%(asctime)s\t%(levelname)-8s\t%(message)s'
     )
 
-    if args.easy:
+    if args.version == 'v2':
+        generate_tasks_v2(
+            world_paths=args.world_paths,
+            output_dir_path=args.output_dir_path,
+            n=args.num_stories_choices,
+            noise=args.test_noise,
+            train_noise=args.train_noise,
+        )
+    elif args.easy:
         generate_tasks_with_oracle_fixed_count_1_task_1_story(
             world_paths=args.world_paths,
             output_dir_path=args.output_dir_path,
