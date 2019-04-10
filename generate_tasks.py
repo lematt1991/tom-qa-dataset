@@ -43,46 +43,18 @@ def generate_tasks_with_oracle_fixed_count(
         tasks = ['tb', 'fb', 'sofb']
         questions = ['memory', 'reality', 'search', 'belief']
 
-        with open(train_file_path, 'w') as f:
-            stories = []
+        combo = itertools.product(tasks, questions, ['val', 'test', 'train'])
+        for task_type, question, data_set in combo:
+            fname = '%s_%s_%s.txt' % (task_type, question, data_set)
+            path = os.path.join(output_dir_path, fname)
 
-            # Generate all combinations of tasks and questions
-            task_questions = list(itertools.product(tasks, questions)) * n
-            random.shuffle(task_questions)
-
-            # Pick 5 task, question combinations and generate story
-            for k in zip(*[iter(task_questions)]*5):
-                ts, qs = zip(*k)
-                if train_noise:
-                    story = task.generate_story(
-                        w, 5, tasks=ts, questions=qs,
-                        num_agents=4, num_locations=6, statement_noise=noise
-                    )
-                else:
-                    story = task.generate_story(
-                        w, 5, tasks=ts, questions=qs,
-                        num_agents=4, num_locations=6
-                    )
-                f.write('\n'.join(stringify(story)))
-                f.write('\n')
-
-
-        # ---------------------------- VAL + TEST ---------------------------- #
-
-        # Iterate through all testing conditions
-        conds = itertools.product(tasks, questions, ['val', 'test'])
-        for task_type, question, data_set in conds:
-
-            fname = '%s_%s_%s_test.txt' % (task_type, question, data_set)
-            full_file_path = os.path.join(output_dir_path, fname)
-            with open(full_file_path, 'w') as f:
-
-                # Create story with questions at end
+            with open(path, 'w') as f:
                 stories = []
-                for i in range(n):
-                    story = task.generate_story_qs_at_end(
-                        w, 4, [task_type]*4, [question], num_agents=4,
-                        num_locations=6, statement_noise=noise
+                for i in tqdm(range(n)):
+                    story = task.generate_story(
+                        w, 1, [task_type], [question], num_agents=4,
+                        num_locations=6, statement_noise=0 if not train_noise
+                            and data_set == 'train' else noise
                     )
                     f.write('\n'.join(stringify(story)))
                     f.write('\n')
@@ -104,52 +76,24 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
 
         # Create folder to contain data
         mkdir_p(output_dir_path)
-        train_file_path = os.path.join(
-            output_dir_path, 'qa21_task_AB_train.txt'
-        )
 
         # Define task creator and task types
         task = Specify_Tasks()
         tasks = ['tb', 'fb', 'sofb']
         questions = ['memory', 'reality', 'search', 'belief']
 
-        with open(train_file_path, 'w') as f:
-
-            # Generate all combinations of tasks and questions
-            task_questions = list(itertools.product(tasks, questions)) * n
-            random.shuffle(task_questions)
-
-            # Create story for each task-question combo
-            stories = []
-            for ts, qs in task_questions:
-                if train_noise:
-                    story = task.generate_story(
-                        w, 1, tasks=[ts], questions=[qs], num_agents=4,
-                        num_locations=6, statement_noise=noise
-                    )
-                else:
-                    story = task.generate_story(
-                        w, 1, tasks=[ts], questions=[qs], num_agents=4,
-                        num_locations=6
-                    )
-                f.write('\n'.join(stringify(story)))
-                f.write('\n')
-
-        # ---------------------------- VAL + TEST ---------------------------- #
-
-        # Iterate through all testing conditions
-        combo = itertools.product(tasks, questions, ['val', 'test'])
+        combo = itertools.product(tasks, questions, ['val', 'test', 'train'])
         for task_type, question, data_set in combo:
-
-            fname = '%s_%s_%s_test.txt' % (task_type, question, data_set)
+            fname = '%s_%s_%s.txt' % (task_type, question, data_set)
             path = os.path.join(output_dir_path, fname)
 
             with open(path, 'w') as f:
                 stories = []
-                for i in range(n):
+                for i in tqdm(range(n)):
                     story = task.generate_story(
                         w, 1, [task_type], [question], num_agents=4,
-                        num_locations=6, statement_noise=noise
+                        num_locations=6, statement_noise=0 if not train_noise
+                            and data_set == 'train' else noise
                     )
                     f.write('\n'.join(stringify(story)))
                     f.write('\n')
@@ -172,36 +116,17 @@ def generate_tasks_v2(
 
         # Create folder to contain data
         mkdir_p(output_dir_path)
-        train_file_path = os.path.join(
-            output_dir_path, 'qa21_task_AB_train.txt'
-        )
 
         # Define task creator and task types
         task = Specify_Tasks_v2()
         tasks = ['fb']
         questions = ['memory', 'reality', 'search', 'belief']
 
-        with open(train_file_path, 'w') as f:
-
-            # Generate all combinations of tasks and questions
-            task_questions = list(itertools.product(tasks, questions)) * n
-            random.shuffle(task_questions)
-
-            # Create story for each task-question combo
-            stories = []
-            for ts, qs in tqdm(task_questions):
-                story = task.generate_story(
-                    w, 1, tasks=[ts], questions=[qs], num_agents=4,
-                    num_locations=6, statement_noise=noise if train_noise else 0
-                )
-                f.write('\n'.join(stringify(story)))
-                f.write('\n')
-
-        # ---------------------------- VAL + TEST ---------------------------- #
+        # ---------------------------- VAL + TEST + train ---------------------------- #
         # Iterate through all testing conditions
-        combo = itertools.product(tasks, questions, ['val', 'test'])
+        combo = itertools.product(tasks, questions, ['val', 'test', 'train'])
         for task_type, question, data_set in combo:
-            fname = '%s_%s_%s_test.txt' % (task_type, question, data_set)
+            fname = '%s_%s_%s.txt' % (task_type, question, data_set)
             path = os.path.join(output_dir_path, fname)
 
             with open(path, 'w') as f:
@@ -209,7 +134,8 @@ def generate_tasks_v2(
                 for i in tqdm(range(n)):
                     story = task.generate_story(
                         w, 1, [task_type], [question], num_agents=4,
-                        num_locations=6, statement_noise=noise
+                        num_locations=6, statement_noise=0 if not train_noise
+                            and data_set == 'train' else noise
                     )
                     f.write('\n'.join(stringify(story)))
                     f.write('\n')
