@@ -257,6 +257,8 @@ def parse_args(args):
         help='Whether or not to include noise at training time'
     )
 
+    parser.add_argument('--seed', type=int, default=0, help='Random seed')
+
     parser.add_argument('-v', '--version', choices=['v1', 'v2'], default='v1')
 
     parsed = parser.parse_args(args)
@@ -267,6 +269,9 @@ def parse_args(args):
 def main(args=sys.argv[1:]):
 
     args = parse_args(args)
+
+    random.seed(args.seed)
+
     logging.basicConfig(
         level=args.logging, format='%(asctime)s\t%(levelname)-8s\t%(message)s'
     )
