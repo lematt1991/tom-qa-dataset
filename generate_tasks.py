@@ -271,6 +271,7 @@ def main(args=sys.argv[1:]):
     args = parse_args(args)
 
     random.seed(args.seed)
+    np.random.seed(args.seed)
 
     logging.basicConfig(
         level=args.logging, format='%(asctime)s\t%(levelname)-8s\t%(message)s'
