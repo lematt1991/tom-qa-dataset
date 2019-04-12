@@ -148,17 +148,22 @@ def write_false_belief_chapter(
     # announce location of object
     chapter.append(Clause(ids(agents), ObjectLocAction(oracle, obj, names(agents))))
 
-    exit_observers = [a2]
-    actions = [
-        lambda observers : ExitedAction(oracle, (a2.name)),
-        lambda observers : MoveAction(oracle, (a1.name, obj, container_2), observers)
-    ]
-    random.shuffle(actions)
-    for action_fn in actions:
-        action = action_fn(names(exit_observers))
-        chapter.append(Clause(ids(exit_observers), action))
-        if isinstance(action, ExitedAction):
-            exit_observers = []
+    act_types = ['move'] + ['loc_change'] * random.randint(1, 2)
+    random.shuffle(act_types)
+    move_observers = [a2]
+    for act_type in act_types:
+        if act_type == 'move':
+            # move the object to container_2
+            act = MoveAction(oracle, (a1.name, obj, container_2), names(move_observers))
+            chapter.append(Clause(ids(move_observers), act))
+        elif oracle.get_location(a2.name) == location:
+            # a2 is in location, exit...
+            chapter.append(Clause([a1.id], ExitedAction(oracle, (a2.name))))
+            move_observers = []
+        else:
+            # a2 already existed, re-enter
+            chapter.append(Clause([a1.id], EnterAction(oracle, (a2.name, location), [a1.name])))
+            move_observers = [a2]
 
     # JUST ONE QUESTION SPLITS A STRING TODO TODO
     for question in questions:
