@@ -93,9 +93,10 @@ def write_true_belief_chapter(
     return chapter
 
 class Agent:
-    def __init__(self, id : int, name : str):
+    def __init__(self, id : int, name : str, order : int):
         self.id = id + 1  # these are 1 indexed for some reason...
         self.name = name
+        self.order = order
 
 def ids(agents):
     return [agent.id for agent in agents]
@@ -104,7 +105,8 @@ def names(agents):
     return [agent.name for agent in agents]
 
 def write_false_belief_chapter(
-    start_state, oracle, location, agent_ids, all_agents, questions=None
+    start_state, oracle, location, agent_ids, all_agents,
+    alternative_loc, questions=None
 ):
     """
     Creates list of clauses that constitute
@@ -120,7 +122,7 @@ def write_false_belief_chapter(
     of the simulation, should clauses should
     be appended in order.
     """
-    a1, a2 = tuple(Agent(id, all_agents[id]) for id in agent_ids)
+    a1, a2 = tuple(Agent(id, all_agents[id], i) for i, id in enumerate(agent_ids))
 
     # pick random object at location
     obj = np.random.choice(oracle.get_objects_at_location(location))
@@ -130,7 +132,7 @@ def write_false_belief_chapter(
     container_candidates = oracle.get_containers(location)[:]
     container_candidates.remove(container_1)
     container_2 = np.random.choice(container_candidates)
-
+    trace = []
     chapter = []
 
     # randomize the order in which agents enter the room
@@ -144,6 +146,7 @@ def write_false_belief_chapter(
             action = EnterAction(oracle, (agent.name, location), names(enter_observers))
         chapter.append(Clause(ids(enter_observers) + [agent.id], action))
         enter_observers.append(agent)
+        trace.append(f'enter_agent_{agent.order}')
 
     # announce location of object
     chapter.append(Clause(ids(agents), ObjectLocAction(oracle, obj, names(agents))))
@@ -156,23 +159,33 @@ def write_false_belief_chapter(
             # move the object to container_2
             act = MoveAction(oracle, (a1.name, obj, container_2), names(move_observers))
             chapter.append(Clause(ids(move_observers), act))
+            trace.append(f'agent_{a1.order}_moves_obj')
         elif oracle.get_location(a2.name) == location:
             # a2 is in location, exit...
             chapter.append(Clause([a1.id], ExitedAction(oracle, (a2.name))))
             move_observers = []
+            trace.append(f'agent_{a2.order}_exits')
         else:
-            # a2 already existed, re-enter
-            chapter.append(Clause([a1.id], EnterAction(oracle, (a2.name, location), [a1.name])))
+            enter_loc = location if random.randint(0, 1) == 0 else alternative_loc
+            # a2 already existed, re-enter same room, or a different one
+            chapter.append(Clause([a1.id], EnterAction(oracle, (a2.name, enter_loc), [a1.name])))
             move_observers = [a2]
+            trace.append(f'agent_{a2.order}_reenters')
 
     # JUST ONE QUESTION SPLITS A STRING TODO TODO
     for question in questions:
         agents = [a1, a2]
         random.shuffle(agents)
+        if question in {'memory', 'reality'}:
+            trace.append(question)
+        elif question == 'search':
+            trace.append(f'first_order_agent_{agents[1].order}')
+        else:
+            trace.append(f'second_order_agent{agents[0].order}')
         chapter.append(sample_question(start_state, oracle, agents[0].name,
             agents[1].name, obj, question))
 
-    return chapter
+    return chapter, ','.join(trace)
 
 def write_second_order_false_belief_chapter(
     start_state, oracle, location, agent_ids, all_agents, questions=None
@@ -314,13 +327,14 @@ class Specify_Tasks(Task):
         for i in range(tasks_per_story):
             chapter = chapters[tasks[i]]
             location = np.random.choice(random_locations)
+            alt_loc = np.random.choice(random_locations)
             agent_ids = np.random.choice(
                 range(len(random_actors)), size=2, replace=False
             )
             story.extend(
                 chapter(
                     start_state, oracle, location, agent_ids,
-                    random_actors, [questions[i]]
+                    random_actors, alternative_loc=alt_loc, questions=[questions[i]]
                 )
             )
 

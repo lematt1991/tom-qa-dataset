@@ -127,18 +127,19 @@ def generate_tasks_v2(
         combo = itertools.product(tasks, questions, ['val', 'test', 'train'])
         for task_type, question, data_set in combo:
             fname = '%s_%s_%s.txt' % (task_type, question, data_set)
+            tname = '%s_%s_%s.trace' % (task_type, question, data_set)
             path = os.path.join(output_dir_path, fname)
-
-            with open(path, 'w') as f:
+            traces = os.path.join(output_dir_path, tname)
+            with open(path, 'w') as f, open(traces, 'w') as trace_f:
                 stories = []
                 for i in tqdm(range(n)):
-                    story = task.generate_story(
+                    story, trace = task.generate_story(
                         w, 1, [task_type], [question], num_agents=4,
                         num_locations=6, statement_noise=0 if not train_noise
                             and data_set == 'train' else noise
                     )
-                    f.write('\n'.join(stringify(story)))
-                    f.write('\n')
+                    print('\n'.join(stringify(story)), file=f)
+                    print(trace, file=trace_f)
 
 def parse_args(args):
 
