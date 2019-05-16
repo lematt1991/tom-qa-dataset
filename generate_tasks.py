@@ -13,6 +13,7 @@ from tasks_v2 import Specify_Tasks as Specify_Tasks_v2
 from utils import is_file, mkdir_p, remove_extension
 from world import World
 from tqdm import tqdm
+from subprocess import check_output
 
 
 def generate_tasks_with_oracle_fixed_count(
@@ -142,6 +143,10 @@ def generate_tasks_v2(
                     for story, trace in zip(*res):
                         print('\n'.join(stringify(story)), file=f)
                         print(','.join(trace), file=trace_f)
+    
+        outfile = os.path.join(output_dir_path, 'train_all.txt')
+        check_output(f'cat {os.path.join(output_dir_path, "*_train.txt")} > {outfile}', shell=True)
+
 
 def parse_args(args):
 

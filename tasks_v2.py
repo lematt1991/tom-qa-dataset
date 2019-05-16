@@ -15,7 +15,6 @@ def sample_question(oracle_start_state, oracle, agent1, agent2, obj, question):
                  Question(idx_dummy, RealityAction(oracle, obj)),
                  Question(idx_dummy, MemoryAction(oracle_start_state, obj))
                 ]
-    import pdb; pdb.set_trace()
     if question == 'memory':
         return questions[-1], 'memory'
     elif question == 'reality':
@@ -23,7 +22,7 @@ def sample_question(oracle_start_state, oracle, agent1, agent2, obj, question):
     elif question == 'belief':
         return questions[2], f'second_order_{agent1.order}'
     elif question == 'search':
-        return questions[1], f'first_order_{agent1.order}'
+        return questions[1], f'first_order_{agent2.order}'
 
 # -------------------------------- Chapters ---------------------------------- #
 
@@ -38,6 +37,12 @@ def ids(agents):
 
 def names(agents):
     return [agent.name for agent in agents]
+
+def enter(oracle, agent, observers, location):
+    if oracle.get_location(agent.name) == location:  # already in location
+        return LocationAction(oracle, (agent.name, location), names(observers))
+    else:  # somewhere else, move this person into location
+        return EnterAction(oracle, (agent.name, location), names(observers))
 
 def write_false_belief_chapter(
     start_state, oracle, location, agent_ids, all_agents,
@@ -57,7 +62,7 @@ def write_false_belief_chapter(
     of the simulation, should clauses should
     be appended in order.
     """
-    a1, a2 = tuple(Agent(id, all_agents[id], i) for i, id in enumerate(agent_ids))
+    a1, a2, a3 = tuple(Agent(id, all_agents[id], i) for i, id in enumerate(agent_ids))
 
     # pick random object at location
     obj = np.random.choice(oracle.get_objects_at_location(location))
@@ -75,10 +80,7 @@ def write_false_belief_chapter(
     enter_observers = []
     random.shuffle(agents)
     for agent in agents:
-        if oracle.get_location(agent.name) == location:
-            action = LocationAction(oracle, (agent.name, location), names(enter_observers))
-        else:
-            action = EnterAction(oracle, (agent.name, location), names(enter_observers))
+        action = enter(oracle, agent, enter_observers, location)
         chapter.append(Clause(ids(enter_observers) + [agent.id], action))
         enter_observers.append(agent)
         trace.append(f'enter_agent_{agent.order}')
@@ -105,7 +107,24 @@ def write_false_belief_chapter(
             # a2 already existed, re-enter same room, or a different one
             chapter.append(Clause([a1.id], EnterAction(oracle, (a2.name, enter_loc), [a1.name])))
             move_observers = [a2]
-            trace.append(f'agent_{a2.order}_reenters')
+            trace.append(f'agent_{a2.order}_reenters_' + ('alt_loc' if enter_loc != location else 'loc'))
+
+
+    # generate indices for which person 3 should enter/exit
+    indices = np.random.choice(np.arange(len(chapter)+1), replace=False, size=random.randint(0, 2))
+    indices.sort()
+    for idx, action in zip(indices, ['enter', 'exit']):
+        if action == 'exit':
+            clause = Clause(ids(move_observers), ExitedAction(oracle, (a3.name)))
+            enter_observers.pop()  # remove person 3 from observers
+            trace.insert(idx, f'agent_{a3.order}_exits')
+            chapter.insert(idx, clause)
+        else:
+            enter_loc = location if random.randint(0, 1) == 0 else alternative_loc
+            clause = Clause(ids(move_observers), EnterAction(oracle, (a3.name, enter_loc), names(enter_observers)))
+            enter_observers.append(a3)
+            trace.insert(idx, f'agent_{a3.order}_enters')
+            chapter.insert(idx, clause)
 
     if question == 'all':
         stories, traces = [], []
@@ -194,7 +213,7 @@ class Specify_Tasks:
         location = np.random.choice(random_locations)
         alt_loc = np.random.choice(random_locations)
         agent_ids = np.random.choice(
-            range(len(random_actors)), size=2, replace=False
+            range(len(random_actors)), size=3, replace=False
         )
         return chapter(
             start_state, oracle, location, agent_ids,
