@@ -126,6 +126,15 @@ def write_false_belief_chapter(
             trace.insert(idx, f'agent_{a3.order}_enters')
             chapter.insert(idx, clause)
 
+    # Add noise:
+    indices = np.random.choice(np.arange(len(chapter)+1), replace=False, size=random.randint(0, 2))
+    for idx in indices:
+        person = np.random.choice([a1, a2, a3], 1)[0].name
+        things = list(oracle.locations.containers.keys())
+        things += list(oracle.locations.obj_containers.keys())
+        thing = np.random.choice(things, 1)[0]
+        chapter.insert(idx, Clause([], ActualNoise(oracle, person, thing)))
+
     if question == 'all':
         stories, traces = [], []
         for q in ['memory', 'search', 'belief', 'reality']:

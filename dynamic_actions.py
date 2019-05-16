@@ -250,3 +250,14 @@ class NoiseAction(Action):
         super().__init__(templates)
 
     
+class ActualNoise(Action):
+    def __init__(self, oracle, person, thing):
+        templates = {
+            'declarative': [
+                f'{person} likes the {thing}',
+                f'{person} dislikes the {thing}',
+                f'{person} loves the {thing}',
+                f'{person} hates the {thing}',
+            ]
+        }
+        super().__init__(templates)
