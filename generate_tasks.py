@@ -100,7 +100,8 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
 
 
 def generate_tasks_v2(
-    world_paths, output_dir_path, n, noise=.1, train_noise=False
+    world_paths, output_dir_path, n, noise=.1, train_noise=False,
+    all_questions=False
 ):
     """Generates stories with guarantee that each task is seen n times."""
     mkdir_p(output_dir_path)
@@ -120,7 +121,7 @@ def generate_tasks_v2(
         # Define task creator and task types
         task = Specify_Tasks_v2()
         tasks = ['fb']
-        questions = ['memory', 'reality', 'search', 'belief']
+        questions = ['all'] if all_questions else ['memory', 'reality', 'search', 'belief']
 
         # ---------------------------- VAL + TEST + train ---------------------------- #
         # Iterate through all testing conditions
@@ -133,13 +134,14 @@ def generate_tasks_v2(
             with open(path, 'w') as f, open(traces, 'w') as trace_f:
                 stories = []
                 for i in tqdm(range(n)):
-                    story, trace = task.generate_story(
-                        w, 1, [task_type], [question], num_agents=4,
+                    res = task.generate_story(
+                        w, task_type, question, num_agents=4,
                         num_locations=6, statement_noise=0 if not train_noise
                             and data_set == 'train' else noise
                     )
-                    print('\n'.join(stringify(story)), file=f)
-                    print(trace, file=trace_f)
+                    for story, trace in zip(*res):
+                        print('\n'.join(stringify(story)), file=f)
+                        print(','.join(trace), file=trace_f)
 
 def parse_args(args):
 
@@ -180,6 +182,11 @@ def parse_args(args):
     )
 
     parser.add_argument(
+        '--all_questions', action='store_true', help='Create all possible questions'
+        ' for each story'
+    )
+
+    parser.add_argument(
         '-tn', '--train_noise', dest='train_noise', type=bool, default=False,
         help='Whether or not to include noise at training time'
     )
@@ -211,6 +218,7 @@ def main(args=sys.argv[1:]):
             n=args.num_stories_choices,
             noise=args.test_noise,
             train_noise=args.train_noise,
+            all_questions=args.all_questions,
         )
     elif args.easy:
         generate_tasks_with_oracle_fixed_count_1_task_1_story(
