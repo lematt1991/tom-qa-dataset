@@ -146,7 +146,8 @@ def generate_tasks_v2(
     
         outfile = os.path.join(output_dir_path, 'train_all.txt')
         check_output(f'cat {os.path.join(output_dir_path, "*_train.txt")} > {outfile}', shell=True)
-
+        outfile = os.path.join(output_dir_path, 'qa21_train.txt')
+        check_output(f'cat {os.path.join(output_dir_path, "*_train.txt")} > {outfile}', shell=True)
 
 def parse_args(args):
 

@@ -9,21 +9,17 @@ import random
 
 def sample_question(oracle_start_state, oracle, agent1, agent2, obj, question):
     idx_dummy = [0]
-    questions = [Question(idx_dummy, SearchedAction(oracle, agent1.name, obj)),
-                 Question(idx_dummy, SearchedAction(oracle, agent2.name, obj)),
-                 Question(idx_dummy, BeliefSearchAction(oracle, agent1.name, agent2.name, obj)),
-                 Question(idx_dummy, RealityAction(oracle, obj)),
-                 Question(idx_dummy, MemoryAction(oracle_start_state, obj))
-                ]
     if question == 'memory':
-        return questions[-1], 'memory'
+        action, trace = MemoryAction(oracle_start_state, obj), 'memory'
     elif question == 'reality':
-        return questions[3], 'reality'
+        action, trace = RealityAction(oracle, obj), 'reality'
     elif question == 'belief':
-        return questions[2], f'second_order_{agent1.order}'
+        action = BeliefSearchAction(oracle, agent1.name, agent2.name, obj)
+        trace = f'second_order_{agent1.order}_{"" if action.tom else "no_"}tom'
     elif question == 'search':
-        return questions[1], f'first_order_{agent2.order}'
-
+        action = SearchedAction(oracle, agent1.name, obj)
+        trace = f'first_order_{agent1.order}_{"" if action.tom else "no_"}tom'
+    return Question(idx_dummy, action), trace
 # -------------------------------- Chapters ---------------------------------- #
 
 class Agent:
@@ -40,7 +36,7 @@ def names(agents):
 
 def enter(oracle, agent, observers, location):
     if oracle.get_location(agent.name) == location:  # already in location
-        return LocationAction(oracle, (agent.name, location), names(observers))
+        return LocationAction(oracle, (agent.name, location))
     else:  # somewhere else, move this person into location
         return EnterAction(oracle, (agent.name, location), names(observers))
 

@@ -95,7 +95,7 @@ class Oracle(object):
             objects.extend(self.get_container_obj(container))
         return objects
        
-    def get_container_location(self, containers):
+    def get_container_location(self, container):
         return self.locations.container_locations[container]
     
     def _set_container_location(self, container, location):

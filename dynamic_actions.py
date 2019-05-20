@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 
 class Action(object):
@@ -9,11 +10,15 @@ class Action(object):
     def render_declarative(self):
         assert 'declarative' in self.templates and \
             len(self.templates['declarative']) > 0
+        if hasattr(self, 'fixed'):
+            return self.templates['declarative'][self.fixed]
         return np.random.choice(self.templates['declarative'])
 
     def render_interrogative(self):
         assert 'interrogative' in self.templates and \
             len(self.templates['interrogative']) > 0, str(self.templates)
+        if hasattr(self, 'fixed'):
+            return self.templates['interrogative'][self.fixed]
         return np.random.choice(self.templates['interrogative'])
 
 
@@ -32,7 +37,10 @@ class ExitAction(Action):
 class SearchedAction(Action):
 
     def __init__(self, oracle, agent, obj):
-        fill = (agent, obj, oracle.get_direct_belief(agent, obj))
+        ans = oracle.get_direct_belief(agent, obj)
+        # Does this question require theory of mind?
+        self.tom = ans != oracle.get_object_container(obj)
+        fill = (agent, obj, ans)
         templates = {
             'interrogative': [
                 'Where will %s look for the %s?\t%s' % fill,
@@ -43,7 +51,10 @@ class SearchedAction(Action):
 class BeliefSearchAction(Action):
 
     def __init__(self, oracle, a1, a2, obj):
-        fill = (a1, a2, obj, oracle.get_indirect_belief(a1, a2, obj))
+        ans = oracle.get_indirect_belief(a1, a2, obj)
+        # Does this question require theory of mind?
+        self.tom = ans != oracle.get_object_container(obj)
+        fill = (a1, a2, obj, ans)
         templates = {
             'interrogative': [
                 'Where does %s think that %s searches for the %s?\t%s' % fill,
@@ -260,4 +271,5 @@ class ActualNoise(Action):
                 f'{person} hates the {thing}',
             ]
         }
+        self.fixed = random.randint(0, len(templates['declarative']) - 1)
         super().__init__(templates)
