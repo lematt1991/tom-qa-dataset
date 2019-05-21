@@ -6,6 +6,8 @@ from oracle import Oracle
 from dynamic_actions import *
 from collections import defaultdict
 import random
+from enum import Enum
+
 
 def sample_question(oracle_start_state, oracle, agent1, agent2, obj, question):
     idx_dummy = [0]
@@ -27,6 +29,12 @@ class Agent:
         self.id = id + 1  # these are 1 indexed for some reason...
         self.name = name
         self.order = order
+    
+    def __str__(self):
+        return f'Agent({self.name}, {self.id}, {self.order})'
+
+    def __hash__(self):
+        return hash(str(self))
 
 def ids(agents):
     return [agent.id for agent in agents]
@@ -39,6 +47,13 @@ def enter(oracle, agent, observers, location):
         return LocationAction(oracle, (agent.name, location))
     else:  # somewhere else, move this person into location
         return EnterAction(oracle, (agent.name, location), names(observers))
+
+
+class StoryType(Enum):
+    true_belief = 'true_belief'
+    false_belief = 'false_belief'
+    second_order_false_belief = 'second_order_false_belief'
+
 
 def write_false_belief_chapter(
     start_state, oracle, location, agent_ids, all_agents,
@@ -59,6 +74,8 @@ def write_false_belief_chapter(
     be appended in order.
     """
     a1, a2, a3 = tuple(Agent(id, all_agents[id], i) for i, id in enumerate(agent_ids))
+    story_type = StoryType.true_belief
+
 
     # pick random object at location
     obj = np.random.choice(oracle.get_objects_at_location(location))
@@ -85,9 +102,12 @@ def write_false_belief_chapter(
     chapter.append(Clause(ids(agents), ObjectLocAction(oracle, obj, names(agents))))
 
     act_types = ['move'] + ['loc_change'] * random.randint(1, 2)
-    random.shuffle(act_types)
-    move_observers = [a2]
-    for act_type in act_types:
+    random.shuffle(act_types) 
+
+    story_type = StoryType.false_belief if act_types[1] == 'move' else story_type
+
+    move_observers = {a1, a2}
+    for i, act_type in enumerate(act_types):
         if act_type == 'move':
             # move the object to container_2
             act = MoveAction(oracle, (a1.name, obj, container_2), names(move_observers))
@@ -96,13 +116,22 @@ def write_false_belief_chapter(
         elif oracle.get_location(a2.name) == location:
             # a2 is in location, exit...
             chapter.append(Clause([a1.id], ExitedAction(oracle, (a2.name))))
-            move_observers = []
+            move_observers.remove(a2)
             trace.append(f'agent_{a2.order}_exits')
         else:
+            if random.randint(0, 1) == 0 and i == len(act_types) - 1:
+                story_type = StoryType.second_order_false_belief
+                # We can only do this if this is the last index of act_types, otherwise this agent
+                # will try to move the object, but will be in the wrong location
+                chapter.append(Clause(ids(move_observers), ExitedAction(oracle, (a1.name))))
+                move_observers.remove(a1)
+                trace.append(f'agent_{a1.order}_exits')
+
             enter_loc = location if random.randint(0, 1) == 0 else alternative_loc
-            # a2 already existed, re-enter same room, or a different one
+            # a2 already exited, re-enter same room, or a different one
             chapter.append(Clause([a1.id], EnterAction(oracle, (a2.name, enter_loc), [a1.name])))
-            move_observers = [a2]
+            if enter_loc == location:
+                move_observers.add(a2)
             trace.append(f'agent_{a2.order}_reenters_' + ('alt_loc' if enter_loc != location else 'loc'))
 
 
@@ -141,7 +170,7 @@ def write_false_belief_chapter(
             qtext, qtrace = sample_question(start_state, oracle, a2, a1, obj, q)
             stories.append(chapter + [qtext])
             traces.append(trace + [qtrace])
-        return stories, traces
+        return stories, traces, story_type
     else:
         agents = [a1, a2]
         random.shuffle(agents)
@@ -149,7 +178,7 @@ def write_false_belief_chapter(
             agents[1], obj, question)
         chapter.append(qtext)
         trace.append(qtrace)
-        return [chapter], [trace]
+        return [chapter], [trace], story_type
 
 
 #######################################

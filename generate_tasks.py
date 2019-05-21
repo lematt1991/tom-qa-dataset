@@ -9,7 +9,7 @@ import itertools
 
 from stringify import stringify
 from tasks import Specify_Tasks
-from tasks_v2 import Specify_Tasks as Specify_Tasks_v2
+from tasks_v2 import Specify_Tasks as Specify_Tasks_v2, StoryType
 from utils import is_file, mkdir_p, remove_extension
 from world import World
 from tqdm import tqdm
@@ -102,7 +102,7 @@ def generate_tasks_with_oracle_fixed_count_1_task_1_story(
 
 def generate_tasks_v2(
     world_paths, output_dir_path, n, noise=.1, train_noise=False,
-    all_questions=False
+    all_questions=False, balance=False
 ):
     """Generates stories with guarantee that each task is seen n times."""
     mkdir_p(output_dir_path)
@@ -124,25 +124,46 @@ def generate_tasks_v2(
         tasks = ['fb']
         questions = ['all'] if all_questions else ['memory', 'reality', 'search', 'belief']
 
-        # ---------------------------- VAL + TEST + train ---------------------------- #
-        # Iterate through all testing conditions
-        combo = itertools.product(tasks, questions, ['val', 'test', 'train'])
-        for task_type, question, data_set in combo:
-            fname = '%s_%s_%s.txt' % (task_type, question, data_set)
-            tname = '%s_%s_%s.trace' % (task_type, question, data_set)
-            path = os.path.join(output_dir_path, fname)
-            traces = os.path.join(output_dir_path, tname)
-            with open(path, 'w') as f, open(traces, 'w') as trace_f:
-                stories = []
-                for i in tqdm(range(n)):
-                    res = task.generate_story(
-                        w, task_type, question, num_agents=4,
-                        num_locations=6, statement_noise=0 if not train_noise
-                            and data_set == 'train' else noise
-                    )
-                    for story, trace in zip(*res):
-                        print('\n'.join(stringify(story)), file=f)
-                        print(','.join(trace), file=trace_f)
+        if balance:
+            for data_type in ['train', 'val', 'test']:
+                quota = {story_type: int(n / len(StoryType)) for story_type in StoryType}
+                fname = '%s_%s_%s.txt' % ('fb', 'all', data_type)
+                tname = '%s_%s_%s.trace' % ('fb', 'all', data_type)
+                path = os.path.join(output_dir_path, fname)
+                traces = os.path.join(output_dir_path, tname)
+                with open(path, 'w') as f, open(traces, 'w') as trace_f, tqdm(total=n) as pbar:
+                    while any([v > 0 for v in quota.values()]):
+                        stories, traces, story_type = task.generate_story(
+                            w, 'fb', 'all', num_agents=4, num_locations=6, statement_noise=0
+                        )
+                        if quota[story_type] > 0:
+                            quota[story_type] -= 1
+                        else:
+                            continue
+                        for story, trace in zip(stories, traces):
+                            print('\n'.join(stringify(story)), file=f)
+                            print(','.join(trace + [story_type.value]), file=trace_f)
+                        pbar.update(1)
+        else:
+            # ---------------------------- VAL + TEST + train ---------------------------- #
+            # Iterate through all testing conditions
+            combo = itertools.product(tasks, questions, ['val', 'test', 'train'])
+            for task_type, question, data_set in combo:
+                fname = '%s_%s_%s.txt' % (task_type, question, data_set)
+                tname = '%s_%s_%s.trace' % (task_type, question, data_set)
+                path = os.path.join(output_dir_path, fname)
+                traces = os.path.join(output_dir_path, tname)
+                with open(path, 'w') as f, open(traces, 'w') as trace_f:
+                    stories = []
+                    for i in tqdm(range(n)):
+                        res = task.generate_story(
+                            w, task_type, question, num_agents=4,
+                            num_locations=6, statement_noise=0 if not train_noise
+                                and data_set == 'train' else noise
+                        )
+                        for story, trace in zip(*res):
+                            print('\n'.join(stringify(story)), file=f)
+                            print(','.join(trace), file=trace_f)
     
         outfile = os.path.join(output_dir_path, 'train_all.txt')
         check_output(f'cat {os.path.join(output_dir_path, "*_train.txt")} > {outfile}', shell=True)
@@ -197,6 +218,10 @@ def parse_args(args):
         help='Whether or not to include noise at training time'
     )
 
+    parser.add_argument('--balance', action='store_true', default=False,
+        help='Balance the number of true belief, first order false belief'
+        ' and second order false belief stories')
+
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
 
     parser.add_argument('-v', '--version', choices=['v1', 'v2'], default='v1')
@@ -225,6 +250,7 @@ def main(args=sys.argv[1:]):
             noise=args.test_noise,
             train_noise=args.train_noise,
             all_questions=args.all_questions,
+            balance=args.balance
         )
     elif args.easy:
         generate_tasks_with_oracle_fixed_count_1_task_1_story(
